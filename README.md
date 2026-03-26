@@ -1,4 +1,4 @@
-# React + TypeScript + Vite
+<!-- # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
@@ -70,4 +70,7 @@ export default defineConfig([
     },
   },
 ])
-```
+``` -->
+🤝 Help Neighbor
+
+Help Neighbor is a full-stack web platform that connects people who need help with everyday tasks to those willing to assist and earn money.
