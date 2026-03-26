@@ -1,0 +1,27 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+
+@layer base {
+  body {
+    @apply font-sans text-text-main bg-bg-default antialiased;
+  }
+  
+  h1, h2, h3, h4 {
+    @apply font-semibold tracking-tight text-text-main;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-primary text-white rounded-[3px] font-medium hover:bg-primary-hover transition-colors inline-flex items-center justify-center gap-2;
+  }
+  
+  .btn-subtle {
+    @apply px-4 py-2 text-text-main rounded-[3px] font-medium hover:bg-bg-subtle transition-colors inline-flex items-center justify-center gap-2;
+  }
+
+  .card-atlassian {
+    @apply bg-white border border-border rounded-[3px] p-6 hover:shadow-md transition-shadow;
+  }
+} */
