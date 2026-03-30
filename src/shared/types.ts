@@ -264,3 +264,20 @@ export interface CommunityChallenge {
 
   createdAt: number;
 }
+
+export interface ChatMessage {
+  id: number;
+  taskId: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface TypingEvent {
+  taskId: string;
+  senderId: string;
+  senderName: string;
+  isTyping: boolean;
+}

@@ -252,7 +252,7 @@ interface ProfileProps {
   userId?: string | null;
   onBack?: () => void;
 }
-import { Pencil } from "lucide-react";
+import { Pencil, Ticket, Copy } from "lucide-react";
 
 
 const Profile: React.FC<ProfileProps> = ({ userId, onBack }) => {
@@ -269,6 +269,7 @@ const Profile: React.FC<ProfileProps> = ({ userId, onBack }) => {
   const [isFetching, setIsFetching] = useState(false);
 
   const isSelf = !userId || userId === currentUser?.id;
+
 
 
   const saveProfileChanges = async () => {
@@ -530,7 +531,83 @@ const Profile: React.FC<ProfileProps> = ({ userId, onBack }) => {
                   <p className="text-xs text-green-600">Verified</p>
                 </div>
               </div>
+
+              
+
+              {isSelf && (
+                <div className="flex items-start gap-2">
+                  <Ticket className="text-green-600 mt-1" size={18} />
+
+                  <div className="w-full">
+                    <p className="text-sm font-medium">My Coupons (Debug)</p>
+
+                    {currentUser?.coupons && currentUser.coupons.length > 0 ? (
+                      <div className="mt-2 space-y-2">
+                        {currentUser.coupons.map((coupon) => (
+                          <div
+                            key={coupon.id}
+                            className="text-xs border rounded-lg p-2 bg-slate-50"
+                          >
+                            <p>
+                              <span className="font-medium">ID:</span>{" "}
+                              {coupon.id ? coupon.id : <span className="text-red-500">not rec</span>}
+                            </p>
+
+                            <p>
+                              <span className="font-medium">Task ID:</span>{" "}
+                              {coupon.taskId ? coupon.taskId : <span className="text-red-500">not rec</span>}
+                            </p>
+
+                            <p>
+                              <span className="font-medium">Provider:</span>{" "}
+                              {coupon.provider ? coupon.provider : <span className="text-red-500">not rec</span>}
+                            </p>
+
+                            <p>
+                              <span className="font-medium">Code:</span>{" "}
+                              {coupon.code ? coupon.code : <span className="text-red-500">not rec</span>}
+                            </p>
+
+                            <p>
+                              <span className="font-medium">Value:</span>{" "}
+                              {coupon.value !== undefined && coupon.value !== null
+                                ? coupon.value
+                                : <span className="text-red-500">not rec</span>}
+                            </p>
+
+                            <p>
+                              <span className="font-medium">Expiry:</span>{" "}
+                              {coupon.expiryDate
+                                ? new Date(coupon.expiryDate).toLocaleString()
+                                : <span className="text-red-500">not rec</span>}
+                            </p>
+
+                            <p>
+                              <span className="font-medium">From User:</span>{" "}
+                              {coupon.fromUserId ? coupon.fromUserId : <span className="text-red-500">not rec</span>}
+                            </p>
+
+                            <p>
+                              <span className="font-medium">Collected At:</span>{" "}
+                              {coupon.collectedAt
+                                ? new Date(coupon.collectedAt).toLocaleString()
+                                : <span className="text-red-500">not rec</span>}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 mt-1">
+                        No coupons found / not rec
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+
             </div>
+
           </section>
 
           {/* ABOUT */}

@@ -230,58 +230,150 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       //*************************************************** */
 
 
+      // if (action === 'finalize') {
+      //   // 1. Auth check
+      //   if (task.requesterId !== callerId) {
+      //     return res.status(403).json({ error: 'Only the requester can finalize.' });
+      //   }
+      //   if (task.status !== 'done') {
+      //     return res.status(400).json({ error: 'Task is not ready to finalize.' });
+      //   }
+
+      //   // 2. Lock the task atomically before any money moves
+      //   const lockResult = await tasksCollection.updateOne(
+      //     { id: taskId, status: 'done' },
+      //     { $set: { status: 'finalizing' } }
+      //   );
+      //   if (lockResult.modifiedCount === 0) {
+      //     return res.status(409).json({ error: 'Finalization already in progress.' });
+      //   }
+
+      //   try {
+      //     if (task.paymentType === 'cash') {
+      //       const netReward = task.reward * (1 - PLATFORM_FEE_PERCENT);
+
+      //       // 3. Atomic balance check + deduct in one operation
+      //       const deductResult = await usersCollection.updateOne(
+      //         { id: task.requesterId, walletBalance: { $gte: task.reward } },
+      //         { $inc: { walletBalance: -task.reward } }
+      //       );
+      //       if (deductResult.modifiedCount === 0) {
+      //         // Roll back the lock
+      //         await tasksCollection.updateOne({ id: taskId }, { $set: { status: 'done' } });
+      //         return res.status(400).json({ error: 'Insufficient wallet balance.' });
+      //       }
+
+      //       // 4. Credit helper only after deduction succeeds
+      //       await usersCollection.updateOne(
+      //         { id: task.helperId },
+      //         { $inc: { walletBalance: netReward, totalHelps: 1 } }
+      //       );
+      //     }
+      //     // ... coupon logic unchanged
+
+      //     // 5. Mark finalized
+      //     await tasksCollection.updateOne(
+      //       { id: taskId },
+      //       { $set: { status: 'finalized', finalizedAt: Date.now() } }
+      //     );
+      //   } catch (e) {
+      //     // Roll back lock on unexpected error
+      //     await tasksCollection.updateOne({ id: taskId }, { $set: { status: 'done' } });
+      //     throw e;
+      //   }
+      // }
+
+
       if (action === 'finalize') {
-  // 1. Auth check
-  if (task.requesterId !== callerId) {
-    return res.status(403).json({ error: 'Only the requester can finalize.' });
-  }
-  if (task.status !== 'done') {
-    return res.status(400).json({ error: 'Task is not ready to finalize.' });
-  }
+        // 1. Auth check
+        if (task.requesterId !== callerId) {
+          return res.status(403).json({ error: 'Only the requester can finalize.' });
+        }
 
-  // 2. Lock the task atomically before any money moves
-  const lockResult = await tasksCollection.updateOne(
-    { id: taskId, status: 'done' },
-    { $set: { status: 'finalizing' } }
-  );
-  if (lockResult.modifiedCount === 0) {
-    return res.status(409).json({ error: 'Finalization already in progress.' });
-  }
+        if (task.status !== 'done') {
+          return res.status(400).json({ error: 'Task is not ready to finalize.' });
+        }
 
-  try {
-    if (task.paymentType === 'cash') {
-      const netReward = task.reward * (1 - PLATFORM_FEE_PERCENT);
+        // 2. Lock task atomically
+        const lockResult = await tasksCollection.updateOne(
+          { id: taskId, status: 'done' },
+          { $set: { status: 'finalizing' } }
+        );
 
-      // 3. Atomic balance check + deduct in one operation
-      const deductResult = await usersCollection.updateOne(
-        { id: task.requesterId, walletBalance: { $gte: task.reward } },
-        { $inc: { walletBalance: -task.reward } }
-      );
-      if (deductResult.modifiedCount === 0) {
-        // Roll back the lock
-        await tasksCollection.updateOne({ id: taskId }, { $set: { status: 'done' } });
-        return res.status(400).json({ error: 'Insufficient wallet balance.' });
+        if (lockResult.modifiedCount === 0) {
+          return res.status(409).json({ error: 'Finalization already in progress.' });
+        }
+
+        try {
+          // 🔥 IMPORTANT: Fetch fresh task AFTER lock
+          const freshTask = await tasksCollection.findOne({ id: taskId });
+
+          if (!freshTask) {
+            throw new Error('Task not found after locking');
+          }
+
+          if (freshTask.paymentType === 'cash') {
+            const netReward =
+              freshTask.reward * (1 - PLATFORM_FEE_PERCENT);
+
+            // 3. Deduct from requester (atomic check + update)
+            const deductResult = await usersCollection.updateOne(
+              {
+                id: freshTask.requesterId,
+                walletBalance: { $gte: freshTask.reward }
+              },
+              {
+                $inc: { walletBalance: -freshTask.reward }
+              }
+            );
+
+            if (deductResult.modifiedCount === 0) {
+              // rollback lock
+              await tasksCollection.updateOne(
+                { id: taskId },
+                { $set: { status: 'done' } }
+              );
+
+              return res.status(400).json({
+                error: 'Insufficient wallet balance.'
+              });
+            }
+
+            // 4. Credit helper
+            await usersCollection.updateOne(
+              { id: freshTask.helperId },
+              {
+                $inc: {
+                  walletBalance: netReward,
+                  totalHelps: 1
+                }
+              }
+            );
+          }
+
+          // 👉 (Optional) coupon logic goes here
+
+          // 5. Finalize task
+          await tasksCollection.updateOne(
+            { id: taskId },
+            {
+              $set: {
+                status: 'finalized',
+                finalizedAt: Date.now()
+              }
+            }
+          );
+
+        } catch (error) {
+          // ❗ rollback lock on ANY failure
+          await tasksCollection.updateOne(
+            { id: taskId },
+            { $set: { status: 'done' } }
+          );
+
+          throw error;
+        }
       }
-
-      // 4. Credit helper only after deduction succeeds
-      await usersCollection.updateOne(
-        { id: task.helperId },
-        { $inc: { walletBalance: netReward, totalHelps: 1 } }
-      );
-    }
-    // ... coupon logic unchanged
-
-    // 5. Mark finalized
-    await tasksCollection.updateOne(
-      { id: taskId },
-      { $set: { status: 'finalized', finalizedAt: Date.now() } }
-    );
-  } catch (e) {
-    // Roll back lock on unexpected error
-    await tasksCollection.updateOne({ id: taskId }, { $set: { status: 'done' } });
-    throw e;
-  }
-}
 
 
       if (action === 'reject') {

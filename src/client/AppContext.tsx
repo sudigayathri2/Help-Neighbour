@@ -743,7 +743,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import type { User, Task, Notification, AppState, PaymentType, CouponDetails } from '../shared/types';
 import { MOCK_TASKS, MOCK_HELPERS, INITIAL_USER, PLATFORM_FEE_PERCENT } from '../shared/constants';
 type TabType = "find" | "tasks" | "community" | "impact";//s1
-
+import { connectSocket, disconnectSocket } from "./components/Chat/socket";
 interface AppContextType extends AppState {
   activeTab: TabType; //s1
   setActiveTab: (tab: TabType) => void; //s1
@@ -813,7 +813,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   /** --- MOCK / DEMO USERS --- */
   const enterMockMode = useCallback(() => {
     setIsMockMode(true);
-    setCurrentUser({ ...INITIAL_USER }); // Alex Rivera mock
+    setCurrentUser({ ...INITIAL_USER });
+     // Alex Rivera mock
+    connectSocket(INITIAL_USER.id, INITIAL_USER.name);
     setTasks([...MOCK_TASKS]);
     setAvailableHelpers([...MOCK_HELPERS]);
   }, []);
@@ -827,6 +829,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await safeJson(res);
       localStorage.setItem(AUTH_KEY, data.id);
+      connectSocket(data.id, data.name);
       setIsMockMode(false);
       setCurrentUser(data);
     } catch {
@@ -862,6 +865,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     localStorage.setItem(AUTH_KEY, data.id);
+    connectSocket(data.id, data.name);
     setCurrentUser(data);
     setIsMockMode(false);
   };
@@ -874,6 +878,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     const data = await safeJson(res);
     if (data.id) localStorage.setItem(AUTH_KEY, data.id);
+    connectSocket(data.id, data.name);
     setCurrentUser(data);
     setIsMockMode(false);
   };
@@ -992,7 +997,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-//---newly added to update user data after accepting task, completing task, updating profile etc. This ensures that any changes to the user's profile (like totalHelps, walletBalance, etc.) are reflected immediately without needing a full page refresh.
+      //---newly added to update user data after accepting task, completing task, updating profile etc. This ensures that any changes to the user's profile (like totalHelps, walletBalance, etc.) are reflected immediately without needing a full page refresh.
       // const userRes = await fetch('/api/auth', {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
@@ -1222,7 +1227,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         alert(err.error || 'Payment failed');
         return;
       }
-      refreshData();
+
       const data = await res.json();
       const { task: updatedTask, requester, helper } = data;
       setTasks(prev =>
@@ -1230,16 +1235,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           t.id === updatedTask.id ? updatedTask : t
         )
       );
-      if (requester && requester.id === currentUser.id) {
-        setCurrentUser(requester);
+      // if (requester && requester.id === currentUser.id) {
+      //   setCurrentUser(requester);
+      // }
+      // if (helper && helper.id === currentUser.id) {
+      //   setCurrentUser(helper);
+      // }
+      const updatedUser =
+        requester?.id === currentUser.id
+          ? requester
+          : helper?.id === currentUser.id
+            ? helper
+            : null;
+
+      if (updatedUser) {
+        setCurrentUser(prev => ({
+          ...prev,
+          ...updatedUser
+        }));
       }
-      if (helper && helper.id === currentUser.id) {
-        setCurrentUser(helper);
-      }
+      
+
     }
   };
 
   
+
 
 
 

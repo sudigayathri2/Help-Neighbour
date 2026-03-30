@@ -466,11 +466,13 @@
 import React, { useState } from "react";
 import type { Task } from "../../shared/types";
 import { useAppContext } from "../AppContext";
-import { CheckCircle, Circle, Clock, MapPin, Calendar, UserX, } from "lucide-react";
+import { CheckCircle, Circle, Clock, MapPin, Calendar, UserX, MessageCircle, Phone } from "lucide-react";
 interface TaskCardProps {
   task: Task;
 }
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { PLATFORM_FEE_PERCENT } from "../../shared/constants";
+import { ChatModal } from "./Chat/ChatModel";
 
 const formatDate = (ts?: number) => {
   if (!ts) return "—";
@@ -509,7 +511,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   //   const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
   //   window.open(url, "_blank");
   // }
-
+  const [chatOpen, setChatOpen] = useState(false);
   const getStatusColor = () => {
     switch (task.status) {
       case "accepted":
@@ -526,6 +528,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         return "bg-slate-50 text-slate-600";
     }
   };
+  const netReward = task.reward * (1 - PLATFORM_FEE_PERCENT);
 
   const handleFinish = () => {
     if (!proofInput.trim()) {
@@ -539,6 +542,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   };
 
   return (
+
     <div className="bg-white border rounded-xl p-6 shadow-sm">
 
       {/* CATEGORY + STATUS */}
@@ -584,7 +588,24 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               <p className="text-xs text-indigo-500">HELPER</p>
               <p className="font-medium">{task.helperName}</p>
             </div>
+
+            <div className="flex gap-2">
+              <button className="h-8 w-8  px-2 bg-gray-200 rounded">
+                <button
+                  onClick={() => setChatOpen(true)}
+                  className="h-8 w-8 px-2 bg-indigo-100 hover:bg-indigo-200 rounded transition-colors"
+                  title={`Chat with ${task.helperName}`}
+                >
+                  <MessageCircle size={16} className="text-indigo-600" />
+                </button>
+              </button>
+
+              <button className="h-8 w-8 px-2 bg-gray-200 rounded">
+                <Phone size={16} />
+              </button>
+            </div>
           </div>
+
         ) : (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-slate-700 border-2 border-dashed border-slate-300 flex items-center justify-center">
@@ -643,8 +664,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         <div>
           <p className="text-slate-500 text-xs">Reward</p>
           <p className="text-green-600 font-semibold">
-            ${task.reward}
+            ${netReward.toFixed(2)}
           </p>
+          <p className="text-slate-500 text-xs">Payment type</p>
           <p className="text-xs text-slate-400">
             {task.paymentType}
           </p>
@@ -842,42 +864,52 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   <p className="text-xs text-gray-500">
                     {task.finalizedAt
                       ? formatDate(task.finalizedAt)
-                      : "Upcoming"}
+                      : "Waiting for confirmation"}
                   </p>
                 </div>
 
               </div>
 
+              <div>
+                {task.proofOfWork && (
+                  <div className="mb-4 p-3 bg-slate-200 rounded-xl border border-slate-100">
+                    <span className="text-[10px] font-black uppercase text-slate-900 block mb-1 tracking-widest">Proof of Work Provided:</span>
+                    <p className="text-sm italic text-slate-950 leading-snug">"{task.proofOfWork}"</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
 
           {/* <div className="mt-6 border rounded-lg p-4 bg-gray-50 flex justify-between"> */}
-          {task.status === "accepted" && isMine && (
-            <>
-              <div>
-                <div className="flex items-center gap-2">
-                  <MapPin size={16} />
-                  <p className="text-sm font-medium">
-                    Live Location
+          {
+            task.status === "accepted" && isMine && (
+              <>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <MapPin size={16} />
+                    <p className="text-sm font-medium">
+                      Live Location
+                    </p>
+                  </div>
+
+                  <p className="text-sm text-gray-500">
+                    {task.helperName} is at Whole Foods Market
                   </p>
+
+                  <button className="mt-2 border px-3 py-1 text-sm rounded">
+                    View on Map
+                  </button>
                 </div>
 
-                <p className="text-sm text-gray-500">
-                  {task.helperName} is at Whole Foods Market
-                </p>
-
-                <button className="mt-2 border px-3 py-1 text-sm rounded">
-                  View on Map
-                </button>
-              </div>
-
-              <div className="text-right">
-                <p className="text-xs text-gray-400">ETA</p>
-                <p className="font-semibold">25 min</p>
-              </div>
-            </>
-          )}
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">ETA</p>
+                  <p className="font-semibold">25 min</p>
+                </div>
+              </>
+            )
+          }
           {/* </div> */}
 
 
@@ -888,12 +920,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
             {task.status === "done" && isMine && (
               <>
-                  {/* {task.proofOfWork && (
-                    <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-[10px] font-black uppercase text-slate-400 block mb-1 tracking-widest">Proof of Work Provided:</span>
-                      <p className="text-sm italic text-slate-700 leading-snug">"{task.proofOfWork}"</p>
-                    </div>
-                  )} */}
                 <button
                   onClick={() => rejectTask(task.id)}
                   className="border px-4 py-2 rounded-lg text-sm"
@@ -905,7 +931,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   onClick={() => finalizeTask(task.id)}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm"
                 >
-                  Verify & Pay
+
+                  {task.paymentType === 'cash'
+                    ? 'Verify & Pay'
+                    : 'Reveal Coupon'}
                 </button>
               </>
             )}
@@ -925,50 +954,66 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
           {/* HELPER SUBMIT PROOF */}
 
-          {task.status === "accepted" && isHelper && !isFinishing && (
-            <button
-              onClick={() => setIsFinishing(true)}
-              className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg"
-            >
-              Finish Work
-            </button>
-          )}
+          {
+            task.status === "accepted" && isHelper && !isFinishing && (
+              <button
+                onClick={() => setIsFinishing(true)}
+                className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg"
+              >
+                Finish Work
+              </button>
+            )
+          }
 
-          {isFinishing && (
-            <div className="mt-4 bg-slate-50 p-4 rounded-lg">
+          {
+            isFinishing && (
+              <div className="mt-4 bg-slate-50 p-4 rounded-lg">
 
-              <textarea
-                value={proofInput}
-                onChange={(e) => setProofInput(e.target.value)}
-                rows={3}
-                className="w-full border rounded p-2 text-sm"
-                placeholder="Describe the work completed..."
-              />
+                <textarea
+                  value={proofInput}
+                  onChange={(e) => setProofInput(e.target.value)}
+                  rows={3}
+                  className="w-full border rounded p-2 text-sm"
+                  placeholder="Describe the work completed..."
+                />
 
-              <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2">
 
-                <button
-                  onClick={handleFinish}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded"
-                >
-                  Submit Proof
-                </button>
+                  <button
+                    onClick={handleFinish}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded"
+                  >
+                    Submit Proof
+                  </button>
 
-                <button
-                  onClick={() => setIsFinishing(false)}
-                  className="text-slate-500"
-                >
-                  Cancel
-                </button>
+                  <button
+                    onClick={() => setIsFinishing(false)}
+                    className="text-slate-500"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
 
               </div>
-
-            </div>
-          )}
+            )
+          }
 
         </>
       )}
-    </div>
+      {chatOpen && task.helperId && (
+        <ChatModal
+          taskId={task.id}
+          taskTitle={task.title}
+          receiverId={isMine ? task.helperId : task.requesterId}
+          receiverName={isMine ? (task.helperName ?? "Helper") : (task.requesterName ?? "Requester")}
+          receiverAvatar={isMine ? task.helperAvatar : task.requesterAvatar}
+          currentUserId={currentUser!.id}
+          currentUserName={currentUser!.name}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
+    </div >
   );
 };
 
